@@ -1,0 +1,937 @@
+---
+title: "Sub Studi Analitik Spatiotemporal Dengue di Kab. Sleman"
+author: "Moch. Thoriq Assegaf Al-Ayubi"
+format:
+  html:
+    theme: sandstone
+    toc: true
+    toc-location: right
+    toc-depth: 3
+    toc-colapse: true
+    toc-expand: true
+    page-layout: full
+    self-contained: true
+    self-contained-math: true
+editor: visual
+execute:
+  echo: FALSE
+  warning: FALSE
+editor_options: 
+  chunk_output_type: inline
+---
+
+# Temporal
+
+## Dataset Input
+
+inspeksi dataset terlebih dahulu. Summary data sebagai berikut
+
+```{r}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(plotly)
+library(tidyr)
+library(quarto)
+library(scales)
+
+df <- read_excel("dataset utama analitik tesis.xlsx", 
+    sheet = "temporal", col_types = c("numeric", 
+        "text", "text", "text", "numeric", 
+        "date", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric"))
+
+```
+
+```{r}
+str(df)
+summary(df)
+```
+
+## Tren Dengue di Kab. Sleman
+
+Tren kasus dengue di Kabupaten Sleman tahun 2016-2025 adalah sebagai berikut:
+
+```{r}
+
+trend_total <- df %>%
+  group_by(tanggal) %>%
+  summarise(DBD = sum(DBD, na.rm = TRUE),
+            DD = sum(DD, na.rm = TRUE),
+            Dengue = sum(`Infeksi Dengue`, na.rm = TRUE))
+
+trend_long <- trend_total %>%
+  pivot_longer(cols = c(DBD, DD, Dengue),
+               names_to = "Jenis",
+               values_to = "Jumlah")
+
+grafik1 <- ggplot(trend_long, aes(x = tanggal, y = Jumlah, color=Jenis)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  geom_rect(
+  data = data.frame(
+    xmin = as.Date("2021-05-01"),
+    xmax = max(trend_long$tanggal, na.rm = TRUE),
+    ymin = -Inf,ymax = Inf),
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+  fill = "pink",alpha = 0.2,inherit.aes = FALSE) +
+    scale_color_manual(
+  values = c("DBD" = "orange", "DD" = "darkblue", "Dengue" = "firebrick"),
+  labels = c("DBD" = "Demam Berdarah Dengue",
+             "DD"  = "Dengue Dengue",
+             "Dengue" = "Infeksi Dengue")) +
+    facet_wrap(~ Jenis, scales = "free_y", nrow = 3, labeller = labeller(
+      Jenis = c(
+        "DBD" = "Demam Berdarah Dengue",
+             "DD"  = "Dengue Dengue",
+             "Dengue" = "Infeksi Dengue"))) +
+  labs(
+    title = "Tren Bulanan Infeksi Dengue di Kab. Sleman Tahun 2016-2025",
+    x = "Waktu (Bulanan)",
+    y = "Jumlah Kasus"
+  ) +
+  theme_bw(base_size = 11)+
+  theme(panel.grid = element_blank(),axis.text.x = element_text(angle = 45, hjust = 1),strip.text = element_text(face = "bold"),panel.spacing = unit(0.8, "lines"), legend.position = "none")
+
+ggplotly(grafik1)
+
+```
+
+## Tren Incidence Rate Dengue di Kab. Sleman
+
+Adapun trend insidence rate Dengue di Kabupaten Sleman tahun 2016-2025 adalah sebagai berikut:
+
+```{r}
+
+totalin <- df %>%
+  group_by(tanggal) %>%
+  summarise(DBD = sum(DBD, na.rm = TRUE),
+            DD = sum(DD, na.rm = TRUE),
+            Dengue = sum(`Infeksi Dengue`, na.rm = TRUE),
+            jumlah_penduduk = sum(Penduduk, na.rm = TRUE)) %>%
+  mutate(IR_DBD = round(DBD/jumlah_penduduk*100000,2),
+         IR_DD = round(DD/jumlah_penduduk*100000,2),
+         IR_Dengue = round(Dengue/jumlah_penduduk*100000,2)
+  )
+
+panjangin <- totalin %>%
+  pivot_longer(cols = c(IR_DBD, IR_DD, IR_Dengue),
+               names_to = "Jenis",
+               values_to = "Jumlah")
+
+rect_data <- panjangin %>%
+  distinct(Jenis) %>%
+  mutate(
+    xmin = as.Date("2021-05-01"),
+    xmax = max(panjangin$tanggal, na.rm = TRUE),
+    ymin = -Inf,
+    ymax = Inf)
+
+
+grafik2 <- ggplot(panjangin, aes(x = tanggal, y = Jumlah, color = Jenis)) +
+  geom_rect(
+    data = rect_data,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill = "pink",
+    alpha = 0.2
+  ) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  geom_vline(
+    xintercept = as.Date("2021-05-01"),
+    linetype = "dashed",
+    color = "red",
+    linewidth = 0.8
+  ) +
+  facet_wrap(
+    ~ Jenis,
+    scales = "free_y",
+    nrow = 3,
+    labeller = labeller(
+      Jenis = c(
+        "IR_DBD" = "Demam Berdarah Dengue",
+        "IR_DD" = "Dengue Dengue",
+        "IR_Dengue" = "Infeksi Dengue"))) +
+  scale_color_manual(
+    values = c(
+      "IR_DBD" = "orange",
+      "IR_DD" = "darkblue",
+      "IR_Dengue" = "maroon"
+    )) +
+  labs(
+    title = "Tren Bulanan IR Dengue di Kab. Sleman Tahun 2016–2025",
+    subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
+    caption = "Garis merah menunjukkan awal intervensi Wolbachia di Kab. Sleman (Mei 2021)",
+    x = "Waktu",
+    y = "Incidence Rate per 100.000 Penduduk"
+  ) +
+  theme_bw(base_size = 11) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold"),
+    panel.spacing = unit(0.8, "lines"),
+    legend.position = "none",
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(size = 10))
+
+ggplotly(grafik2)
+
+```
+
+Adapun versi detailnya adalah sebagai berikut:
+
+### Demam Berdarah Dengue
+
+```{r}
+#| out-width: 100%
+g1 <- panjangin %>% filter(Jenis == "IR_DBD") %>% ggplot(aes(x = tanggal, y = Jumlah)) +
+  geom_line(linewidth = 2, color = "orange",alpha=0.7) +
+  geom_point(colour = "orange", size = 2) + 
+  geom_rect(data = data.frame(xmin = as.Date("2021-05-01"),xmax = max(panjangin$tanggal, na.rm = TRUE),
+    ymin = -Inf,ymax = Inf),
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+  fill = "pink",alpha = 0.2,inherit.aes = FALSE) +
+    annotate("text",
+           x = as.Date("2021-06-01"),
+           y = max(panjangin %>% filter(Jenis == "IR_DBD") %>%
+             summarise(max_val = max(Jumlah, na.rm = TRUE)) %>% pull(max_val)),
+           label = "Mulai Intervensi Wolbachia",
+           hjust = 0,
+           vjust = 1.5,
+           size = 3,
+           color = "red") +
+  geom_vline(xintercept = as.Date("2021-05-01"),
+             linetype = "dashed",
+             color = "red",
+             linewidth = 0.8) +
+  labs(title = "Tren Bulanan IR DBD di Kab. Sleman Tahun 2016-2025",
+           subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
+    x = "Waktu",y = "Incidence Rate per 100.000 Penduduk") +
+    theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    panel.spacing = unit(0.8, "lines")
+  );g1
+```
+
+### Demam Dengue
+
+```{r}
+#| out-width: 100%
+g2 <- panjangin %>% filter(Jenis == "IR_DD") %>% ggplot(aes(x = tanggal, y = Jumlah)) +
+  geom_line(linewidth = 2, color = "darkblue",alpha=0.7) +
+  geom_point(colour = "darkblue", size = 2) + 
+  geom_rect(data = data.frame(xmin = as.Date("2021-05-01"),xmax = max(panjangin$tanggal, na.rm = TRUE),
+    ymin = -Inf,ymax = Inf),
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+  fill = "pink",alpha = 0.2,inherit.aes = FALSE) +
+    annotate("text",
+           x = as.Date("2021-06-01"),
+           y = max(panjangin %>% filter(Jenis == "IR_DD") %>%
+             summarise(max_val = max(Jumlah, na.rm = TRUE)) %>% pull(max_val)),
+           label = "Mulai Intervensi Wolbachia",
+           hjust = 0,
+           vjust = 1.5,
+           size = 3,
+           color = "red") +
+  geom_vline(xintercept = as.Date("2021-05-01"),
+             linetype = "dashed",
+             color = "red",
+             linewidth = 0.8) +
+  labs(title = "Tren Bulanan IR Demam Dengue (DD) di Kab. Sleman Tahun 2016-2025",
+           subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
+    x = "Waktu",y = "Incidence Rate per 100.000 Penduduk") +
+    theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    panel.spacing = unit(0.8, "lines")
+  );g2
+```
+
+### Infeksi Dengue
+
+```{r}
+#| out-width: 100%
+g3 <- panjangin %>% filter(Jenis == "IR_Dengue") %>% ggplot(aes(x = tanggal, y = Jumlah)) +
+  geom_line(linewidth = 2, color = "maroon",alpha=0.7) +
+  geom_point(colour = "maroon", size = 2) + 
+  geom_rect(data = data.frame(xmin = as.Date("2021-05-01"),xmax = max(panjangin$tanggal, na.rm = TRUE),
+    ymin = -Inf,ymax = Inf),
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+  fill = "pink",alpha = 0.2,inherit.aes = FALSE) +
+    annotate("text",
+           x = as.Date("2021-06-01"),
+           y = max(panjangin %>% filter(Jenis == "IR_Dengue") %>%
+             summarise(max_val = max(Jumlah, na.rm = TRUE)) %>% pull(max_val)),
+           label = "Mulai Intervensi Wolbachia",
+           hjust = 0,
+           vjust = 1.5,
+           size = 3,
+           color = "red") +
+  geom_vline(xintercept = as.Date("2021-05-01"),
+             linetype = "dashed",
+             color = "red",
+             linewidth = 0.8) +
+  labs(title = "Tren Bulanan IR Infeksi Dengue di Kab. Sleman Tahun 2016-2025",
+           subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
+    x = "Waktu",y = "Incidence Rate per 100.000 Penduduk") +
+    theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    panel.spacing = unit(0.8, "lines")
+  );g3
+```
+
+## Trend Komparasi Wilayah Wolbachia VS non-Wolbachia
+
+Perbandingan tren incidence rate antara wilayah wolbachia dengan wilayah non wolbachia di Kab. Sleman adalah sebagai berikut:
+
+```{r}
+#| out-width: 100%
+df2 <- df %>% filter(Kategori != "dihapus")
+
+total2 <- df2 %>%
+  group_by(tanggal, Kategori) %>%
+  summarise(
+    DBD = sum(DBD, na.rm = TRUE),
+    DD = sum(DD, na.rm = TRUE),
+    Dengue = sum(`Infeksi Dengue`, na.rm = TRUE),
+    jumlah_penduduk = sum(Penduduk, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    IR_DBD = round(DBD / jumlah_penduduk * 100000, 2),
+    IR_DD = round(DD / jumlah_penduduk * 100000, 2),
+    IR_Dengue = round(Dengue / jumlah_penduduk * 100000, 2)
+  )
+
+panjang2 <- total2 %>%
+  pivot_longer(
+    cols = c(IR_DBD, IR_DD, IR_Dengue),
+    names_to = "Jenis",
+    values_to = "Jumlah"
+  ) %>%
+  mutate(
+    Kategori = recode(Kategori,
+                      "0" = "Bukan Intervensi",
+                      "1" = "Intervensi")
+  )
+
+
+grafik3 <- ggplot(panjang2, aes(x = tanggal, y = Jumlah, color = Kategori)) +
+  geom_rect(
+    data = rect_data,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill = "#ffb6c1",
+    alpha = 0.25
+  ) +
+  geom_line(linewidth = 1.1) +
+  geom_point(size = 1.8) +
+  geom_vline(
+    xintercept = as.Date("2021-05-01"),
+    linetype = "dashed",
+    color = "red",
+    linewidth = 0.8
+  ) +
+  facet_wrap(
+    ~ Jenis,
+    scales = "free_y",
+    nrow = 3,
+    labeller = labeller(
+      Jenis = c(
+        "IR_DBD" = "Demam Berdarah Dengue",
+        "IR_DD" = "Dengue Dengue",
+        "IR_Dengue" = "Infeksi Dengue"
+      )
+    )
+  ) +
+  scale_color_manual(
+    values = c(
+      "Bukan Intervensi" = "#f4a261",
+      "Intervensi" = "#264653"
+    )
+  ) +
+  labs(
+    title = "Tren Bulanan IR Dengue di Kab. Sleman (2016–2025)",
+    subtitle = "Perbandingan wilayah intervensi Wolbachia vs non-intervensi",
+    caption = "Garis merah menunjukkan awal intervensi Wolbachia di Kab. Sleman (Mei 2021)",
+    x = "Waktu",
+    y = "Incidence Rate per 100.000 Penduduk",
+    color = "Wilayah Wolbachia"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold"),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    panel.spacing = unit(0.8, "lines"),
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(size = 11))
+
+ggplotly(grafik3)
+
+```
+
+Adapun versi detailnya adalah sebagai berikut:
+
+### Demam Berdarah Dengue
+
+```{r}
+#| out-width: 100%
+g4 <- panjang2 %>%
+  filter(Jenis == "IR_DBD") %>%
+  ggplot(aes(x = tanggal, y = Jumlah, color = Kategori)) +
+  geom_rect(
+    data = data.frame(
+      xmin = as.Date("2021-05-01"),
+      xmax = max(panjang2$tanggal, na.rm = TRUE),
+      ymin = -Inf,
+      ymax = Inf
+    ),
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill = "#ffb6c1",
+    alpha = 0.25
+  ) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  annotate("text",
+           x = as.Date("2021-06-01"),
+           y = max(panjang2 %>% filter(Jenis == "IR_DBD") %>%
+             summarise(max_val = max(Jumlah, na.rm = TRUE)) %>% pull(max_val)),
+           label = "Mulai Intervensi Wolbachia",
+           hjust = 0,
+           vjust = 1.5,
+           size = 3,
+           color = "red") +
+  geom_vline(xintercept = as.Date("2021-05-01"),
+             linetype = "dashed",
+             color = "red",
+             linewidth = 0.8) +
+  scale_color_manual(
+    values = c(
+      "Bukan Intervensi" = "#f4a261",   # orange soft
+      "Intervensi" = "#264653"          # biru tua elegan
+    )
+  ) +
+  labs(
+    title = "Tren Bulanan IR DBD di Kabupaten Sleman (2016–2025)",
+    subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
+    x = "Waktu",
+    y = "Incidence Rate per 100.000 Penduduk",
+    color = "Wilayah Wolbachia"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    panel.spacing = unit(0.8, "lines")
+  ); g4
+```
+
+### Demam Dengue
+
+```{r}
+#| out-width: 100%
+g5 <- panjang2 %>%
+  filter(Jenis == "IR_DD") %>%
+  ggplot(aes(x = tanggal, y = Jumlah, color = Kategori)) +
+  geom_rect(
+    data = data.frame(
+      xmin = as.Date("2021-05-01"),
+      xmax = max(panjang2$tanggal, na.rm = TRUE),
+      ymin = -Inf,
+      ymax = Inf
+    ),
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill = "#ffb6c1",
+    alpha = 0.25
+  ) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  annotate("text",
+           x = as.Date("2021-06-01"),
+           y = max(panjang2 %>% filter(Jenis == "IR_DD") %>%
+             summarise(max_val = max(Jumlah, na.rm = TRUE)) %>% pull(max_val)),
+           label = "Mulai Intervensi Wolbachia",
+           hjust = 0,
+           vjust = 1.5,
+           size = 3,
+           color = "red") +
+  geom_vline(xintercept = as.Date("2021-05-01"),
+             linetype = "dashed",
+             color = "red",
+             linewidth = 0.8) +
+  scale_color_manual(
+    values = c(
+      "Bukan Intervensi" = "#f4a261",   # orange soft
+      "Intervensi" = "#264653"          # biru tua elegan
+    )
+  ) +
+  labs(
+    title = "Tren Bulanan IR DD di Kabupaten Sleman (2016–2025)",
+    subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
+    x = "Waktu",
+    y = "Incidence Rate per 100.000 Penduduk",
+    color = "Wilayah Wolbachia"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    panel.spacing = unit(0.8, "lines")
+  ); g5
+```
+
+### Infeksi Dengue
+
+```{r}
+#| out-width: 100%
+g6 <- panjang2 %>%
+  filter(Jenis == "IR_Dengue") %>%
+  ggplot(aes(x = tanggal, y = Jumlah, color = Kategori)) +
+  geom_rect(
+    data = data.frame(
+      xmin = as.Date("2021-05-01"),
+      xmax = max(panjang2$tanggal, na.rm = TRUE),
+      ymin = -Inf,
+      ymax = Inf
+    ),
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill = "#ffb6c1",
+    alpha = 0.25
+  ) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2) +
+  annotate("text",
+           x = as.Date("2021-06-01"),
+           y = max(panjang2 %>% filter(Jenis == "IR_Dengue") %>%
+             summarise(max_val = max(Jumlah, na.rm = TRUE)) %>% pull(max_val)),
+           label = "Mulai Intervensi Wolbachia",
+           hjust = 0,
+           vjust = 1.5,
+           size = 3,
+           color = "red") +
+  geom_vline(xintercept = as.Date("2021-05-01"),
+             linetype = "dashed",
+             color = "red",
+             linewidth = 0.8) +
+  scale_color_manual(
+    values = c(
+      "Bukan Intervensi" = "#f4a261",   # orange soft
+      "Intervensi" = "#264653"          # biru tua elegan
+    )
+  ) +
+  labs(
+    title = "Tren Bulanan IR Infeksi Dengue di Kabupaten Sleman (2016–2025)",
+    subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
+    x = "Waktu",
+    y = "Incidence Rate per 100.000 Penduduk",
+    color = "Wilayah Wolbachia"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    panel.spacing = unit(0.8, "lines")
+  ); g6
+```
+
+## Heatmap Trend IR Dengue per Desa
+
+### Demam Berdarah Dengue
+
+```{r}
+
+dfhm <- df %>% filter(id_desa > 0) %>% mutate(
+  Kategori = factor(Kategori,levels = c(0, 1),
+                    labels = c("Kontrol", "Intervensi")))
+ggplotly(dfhm %>%
+  mutate(
+    tanggal = as.Date(tanggal),
+    kategori = factor(Kategori),  # pastikan faktor
+    desa = reorder(desa, `IR DBD`, mean)) %>%
+  ggplot(aes(x = tanggal, y = desa, fill = `IR DBD`,
+             text = paste0(
+               "Desa: ", desa,
+               "<br>Kategori: ", Kategori,
+               "<br>Tanggal: ", format(tanggal, "%Y-%m"),
+               "<br>IR DBD: ", round(`IR DBD`, 2)))) +
+  geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year"),
+                                kategori = unique(dfhm$Kategori)),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.4,alpha = 0.3) +
+  geom_tile() + scale_fill_gradientn(
+    colours = c("white", "#fcbba1", "#fb6a4a", "#cb181d", "#67000d"),
+    name = "IR DBD",
+    labels = comma,
+    na.value = "grey90") +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
+  facet_grid(
+    rows = vars(Kategori),
+    scales = "free_y",
+    switch = "y") +
+  labs(
+    title = "Heatmap IR DBD per Desa (2016–2025)",
+    subtitle = "Distribusi temporal IR DBD berdasarkan kategori wilayah di Kab. Sleman",
+    x = "Waktu (Bulanan)",
+    y = "Wilayah Wolbachia–Desa",
+    caption = "Sumber: Data Surveilans Dengue Kab. Sleman") +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    strip.placement = "outside",
+    strip.text.y.left = element_text(angle = 90, face = "bold"),
+    strip.background = element_rect(fill = "palegreen", color = NA),
+    panel.spacing.y = unit(1.5, "lines"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 12, color = "grey40"),
+    legend.position = "right"),
+  tooltip = "text")
+```
+
+Top-10 Desa dengan IR DBD tertinggi
+
+```{r}
+#| out-width: 100%
+intervensi_start <- as.Date("2021-05-01")
+intervensi_end   <- as.Date("2025-12-31")
+
+shade_df <- data.frame(xmin = intervensi_start,xmax = intervensi_end,
+                       ymin = -Inf,ymax = Inf)
+
+rm(intervensi_end,intervensi_start)
+
+top_dbd <- df %>%
+  group_by(desa) %>%
+  summarise(mean_IR = mean(`IR DBD`, na.rm = TRUE), .groups = "drop") %>%
+  slice_max(mean_IR, n = 12) %>%
+  pull(desa)
+
+df_top <- df %>%
+  filter(desa %in% top_dbd) %>%
+  mutate(
+    tanggal = as.Date(tanggal),
+    bulan   = floor_date(tanggal, "month"),
+    Kategori = factor(Kategori,
+                      levels = c(0, 1),
+                      labels = c("Kontrol", "Intervensi"))) %>%
+  group_by(desa, bulan, Kategori) %>%
+  summarise(IR_DBD = mean(`IR DBD`, na.rm = TRUE), .groups = "drop")
+
+order_desa <- df_top %>%
+  group_by(desa) %>%
+  summarise(mean_IR = mean(IR_DBD, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(mean_IR)) %>%
+  pull(desa)
+
+df_top <- df_top %>%
+  mutate(desa = factor(desa, levels = order_desa))
+
+p <- ggplot(df_top, aes(x = bulan, y = IR_DBD, color = Kategori)) +
+  geom_rect(data = shade_df,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,fill = "#a1d99b",alpha = 0.2) +
+  geom_line(linewidth = 0.5, alpha = 0.7) +
+  geom_smooth(
+    method = "loess",
+    se = FALSE,
+    linewidth = 1) +
+  facet_wrap(~desa, scales = "free_y", ncol = 4) +
+  scale_color_manual(
+    values = c("Kontrol" = "#f4a261", "Intervensi" = "#264653")) +
+  scale_x_date(
+    date_breaks = "2 years",
+    date_labels = "%Y") +
+  labs(
+    title = "Trend IR DBD pada Top-12 Desa",
+    subtitle = "Perbandingan Kontrol vs Intervensi dengan periode Wolbachia",
+    x = "Bulan-Tahun",
+    y = "IR DBD per 100.000 penduduk",
+    color = "Kategori",
+    caption = "Area hijau menunjukkan periode intervensi. Garis merupakan LOESS smoothing line") +
+  theme_minimal(base_size = 12) +
+  theme(
+    strip.text = element_text(face = "bold", size = 8),
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    legend.position = "top");p
+```
+
+### Demam Dengue
+
+```{r}
+datadd <- dfhm %>% filter(tanggal >= as.Date("2019-01-01"))
+
+ddd<- datadd %>%
+  mutate(desa = reorder(desa, `IR DD`, mean)) %>%
+  ggplot(aes(x = tanggal, y = desa, fill = `IR DD`,
+             text = paste0(
+               "Desa: ", desa,
+               "<br>Kategori: ", Kategori,
+               "<br>Tanggal: ", format(tanggal, "%Y-%m"),
+               "<br>IR DD: ", round(`IR DD`, 2)))) +
+  geom_vline(data = expand.grid(tanggal = seq(as.Date("2019-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year"),
+                                kategori = unique(datadd$Kategori)),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",size = 0.4,alpha = 0.3) +
+  geom_tile() + scale_fill_gradientn(
+    colours = c("white", "#fcbba1", "#fb6a4a", "#cb181d", "#67000d"),
+    name = "IR DD",
+    labels = comma,
+    na.value = "grey90") +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
+  facet_grid(
+    rows = vars(Kategori),
+    scales = "free_y",
+    switch = "y") +
+  labs(
+    title = "Heatmap IR DD per Desa (2019–2025)",
+    subtitle = "Distribusi temporal IR DD berdasarkan kategori wilayah di Kab. Sleman",
+    x = "Waktu (Bulanan)",
+    y = "Wilayah Wolbachia–Desa",
+    caption = "Sumber: Data Surveilans Dengue Kab. Sleman") +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    strip.placement = "outside",
+    strip.text.y.left = element_text(angle = 90, face = "bold"),
+    strip.background = element_rect(fill = "palegreen", color = NA),
+    panel.spacing.y = unit(1.5, "lines"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 12, color = "grey40"),
+    legend.position = "right")
+
+ggplotly(ddd,tooltip = "text")
+  
+```
+
+Top-10 Desa dengan IR DD tertinggi
+
+```{r}
+#| out-width: 100%
+top_desa1 <- df %>%
+  filter(tanggal >= as.Date("2019-01-01")) %>%
+  group_by(desa) %>%
+  summarise(mean_IR = mean(`IR DD`, na.rm = TRUE), .groups = "drop") %>%
+  slice_max(mean_IR, n = 12) %>%
+  pull(desa)
+
+df_top1 <- df %>%
+  filter(
+    tanggal >= as.Date("2019-01-01"),
+    desa %in% top_desa1
+  ) %>%
+  mutate(
+    tanggal = as.Date(tanggal),
+    bulan = floor_date(tanggal, "month"),
+    Kategori = factor(Kategori,
+                      levels = c(0, 1),
+                      labels = c("Kontrol", "Intervensi"))
+  ) %>%
+  group_by(desa, bulan, Kategori) %>%
+  summarise(IR_DD = mean(`IR DD`, na.rm = TRUE), .groups = "drop")
+
+p1 <- ggplot(df_top1, aes(x = bulan, y = IR_DD, color = Kategori)) +
+  geom_line(alpha = 0.6) +
+  geom_smooth(
+    method = "loess",
+    se = FALSE,
+    linewidth = 1) +
+  facet_wrap(~desa, scales = "free_y", ncol = 4) +
+  scale_color_manual(
+    values = c("Kontrol" = "#f4a261", "Intervensi" = "#264653")) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y") +
+  labs(
+    title = "Trend IR DD pada Top-12 Desa (Mulai 2019)",
+    subtitle = "Perbandingan Kontrol vs Intervensi",
+    x = "Bulan-Tahun",
+    y = "IR DD",
+    color = "Kategori") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 8),
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    legend.position = "top"); p1
+```
+
+### Infeksi Dengue
+
+```{r}
+
+ggplotly(dfhm %>%
+  mutate(
+    tanggal = as.Date(tanggal),
+    kategori = factor(Kategori),  # pastikan faktor
+    desa = reorder(desa, `IR dengue`, mean)) %>%
+  ggplot(aes(x = tanggal, y = desa, fill = `IR dengue`,
+             text = paste0(
+               "Desa: ", desa,
+               "<br>Kategori: ", Kategori,
+               "<br>Tanggal: ", format(tanggal, "%Y-%m"),
+               "<br>IR Dengue: ", round(`IR dengue`, 2)))) +
+  geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year"),
+                                kategori = unique(dfhm$Kategori)),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",size = 0.4,alpha = 0.3) +
+  geom_tile() + scale_fill_gradientn(
+    colours = c("white", "#fcbba1", "#fb6a4a", "#cb181d", "#67000d"),
+    name = "IR Dengue",
+    labels = comma,
+    na.value = "grey90") +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
+  facet_grid(
+    rows = vars(Kategori),
+    scales = "free_y",
+    switch = "y") +
+  labs(
+    title = "Heatmap IR Infeksi Dengue per Desa (2016–2025)",
+    subtitle = "Distribusi temporal IR Infeksi Dengue berdasarkan kategori wilayah di Kab. Sleman",
+    x = "Waktu (Bulanan)",
+    y = "Wilayah Wolbachia–Desa",
+    caption = "Sumber: Data Surveilans Dengue Kab. Sleman") +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    strip.placement = "outside",
+    strip.text.y.left = element_text(angle = 90, face = "bold"),
+    strip.background = element_rect(fill = "palegreen", color = NA),
+    panel.spacing.y = unit(1.5, "lines"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 12, color = "grey40"),
+    legend.position = "right"),
+  tooltip = "text")
+```
+
+Top-10 Desa dengan IR Dengue tertinggi
+
+```{r}
+#| out-width: 100%
+
+top_dengue <- df %>%
+  group_by(desa) %>%
+  summarise(mean_IR = mean(`IR dengue`, na.rm = TRUE), .groups = "drop") %>%
+  slice_max(mean_IR, n = 12) %>%
+  pull(desa)
+
+df_top2 <- df %>%
+  filter(desa %in% top_dengue) %>%
+  mutate(
+    tanggal = as.Date(tanggal),
+    bulan   = floor_date(tanggal, "month"),
+    Kategori = factor(Kategori,
+                      levels = c(0, 1),
+                      labels = c("Kontrol", "Intervensi"))) %>%
+  group_by(desa, bulan, Kategori) %>%
+  summarise(IR_Dengue = mean(`IR dengue`, na.rm = TRUE), .groups = "drop")
+
+order_desa2 <- df_top2 %>%
+  group_by(desa) %>%
+  summarise(mean_IR = mean(IR_Dengue, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(mean_IR)) %>%
+  pull(desa)
+
+df_top2 <- df_top2 %>%
+  mutate(desa = factor(desa, levels = order_desa2))
+
+p2 <- ggplot(df_top2, aes(x = bulan, y = IR_Dengue, color = Kategori)) +
+  geom_rect(data = shade_df,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,fill = "#a1d99b",alpha = 0.2) +
+  geom_line(linewidth = 0.5, alpha = 0.7) +
+  geom_smooth(
+    method = "loess",
+    se = FALSE,
+    linewidth = 1) +
+  facet_wrap(~desa, scales = "free_y", ncol = 4) +
+  scale_color_manual(
+    values = c("Kontrol" = "#f4a261", "Intervensi" = "#264653")) +
+  scale_x_date(
+    date_breaks = "2 years",
+    date_labels = "%Y") +
+  labs(
+    title = "Trend IR Dengue pada Top-12 Desa",
+    subtitle = "Perbandingan Kontrol vs Intervensi dengan periode Wolbachia",
+    x = "Bulan-Tahun",
+    y = "IR DBD per 100.000 penduduk",
+    color = "Kategori",
+    caption = "Area hijau menunjukkan periode intervensi. Garis merupakan LOESS smoothing line") +
+  theme_minimal(base_size = 12) +
+  theme(
+    strip.text = element_text(face = "bold", size = 8),
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    legend.position = "top");p2
+```
+
+# Spatial
+
+coming soon
