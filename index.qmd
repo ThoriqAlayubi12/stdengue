@@ -1,12 +1,13 @@
 ---
 title: "Sub Studi Analitik Spatiotemporal Dengue di Kab. Sleman"
 author: "Moch. Thoriq Assegaf Al-Ayubi"
+date: "28 April 2026"
 format:
   html:
     theme: sandstone
     toc: true
     toc-location: right
-    toc-depth: 3
+    toc-depth: 2
     toc-colapse: true
     toc-expand: true
     page-layout: full
@@ -47,7 +48,7 @@ df <- read_excel("dataset utama analitik tesis.xlsx",
 ```
 
 ```{r}
-str(df)
+## str(df)
 summary(df)
 ```
 
@@ -934,4 +935,4 @@ p2 <- ggplot(df_top2, aes(x = bulan, y = IR_Dengue, color = Kategori)) +
 
 # Spatial
 
-coming soon
+coming soon, doain lancar dan MPH di Juli ini ges
