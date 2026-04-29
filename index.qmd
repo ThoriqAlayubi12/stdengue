@@ -1,7 +1,7 @@
 ---
 title: "Sub Studi Analitik Spatiotemporal Dengue di Kab. Sleman"
 author: "Moch. Thoriq Assegaf Al-Ayubi"
-date: "28 April 2026"
+date-modified: "29 April 2026"
 format:
   html:
     theme: sandstone
@@ -210,6 +210,15 @@ g1 <- panjangin %>% filter(Jenis == "IR_DBD") %>% ggplot(aes(x = tanggal, y = Ju
              linetype = "dashed",
              color = "red",
              linewidth = 0.8) +
+      scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
+    geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.4,alpha = 0.2) +
   labs(title = "Tren Bulanan IR DBD di Kab. Sleman Tahun 2016-2025",
            subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
     x = "Waktu",y = "Incidence Rate per 100.000 Penduduk") +
@@ -250,6 +259,15 @@ g2 <- panjangin %>% filter(Jenis == "IR_DD") %>% ggplot(aes(x = tanggal, y = Jum
              linetype = "dashed",
              color = "red",
              linewidth = 0.8) +
+      scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
+    geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.4,alpha = 0.2) +
   labs(title = "Tren Bulanan IR Demam Dengue (DD) di Kab. Sleman Tahun 2016-2025",
            subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
     x = "Waktu",y = "Incidence Rate per 100.000 Penduduk") +
@@ -290,6 +308,15 @@ g3 <- panjangin %>% filter(Jenis == "IR_Dengue") %>% ggplot(aes(x = tanggal, y =
              linetype = "dashed",
              color = "red",
              linewidth = 0.8) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
+    geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.4,alpha = 0.2) +
   labs(title = "Tren Bulanan IR Infeksi Dengue di Kab. Sleman Tahun 2016-2025",
            subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
     x = "Waktu",y = "Incidence Rate per 100.000 Penduduk") +
@@ -442,6 +469,15 @@ g4 <- panjang2 %>%
       "Intervensi" = "#264653"          # biru tua elegan
     )
   ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
+    geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.4,alpha = 0.2) +
   labs(
     title = "Tren Bulanan IR DBD di Kabupaten Sleman (2016–2025)",
     subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
@@ -502,6 +538,15 @@ g5 <- panjang2 %>%
       "Intervensi" = "#264653"          # biru tua elegan
     )
   ) +
+      scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
+    geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.4,alpha = 0.2) +
   labs(
     title = "Tren Bulanan IR DD di Kabupaten Sleman (2016–2025)",
     subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
@@ -562,6 +607,15 @@ g6 <- panjang2 %>%
       "Intervensi" = "#264653"          # biru tua elegan
     )
   ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
+    geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.4,alpha = 0.2) +
   labs(
     title = "Tren Bulanan IR Infeksi Dengue di Kabupaten Sleman (2016–2025)",
     subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
@@ -931,6 +985,131 @@ p2 <- ggplot(df_top2, aes(x = bulan, y = IR_Dengue, color = Kategori)) +
     strip.text = element_text(face = "bold", size = 8),
     axis.text.x = element_text(angle = 90, hjust = 1),
     legend.position = "top");p2
+```
+
+## Trend Prediktor: ABJ
+
+Adapun trend Angka Bebas Jentik (ABJ) secara Kabupaten adalah sebagai berikut:
+
+```{r}
+#| out-width: 100%
+
+abjpanjang <- df %>%
+  group_by(tanggal) %>%
+  summarise(ABJ = mean(ABJ, na.rm = TRUE))
+
+gabj <- abjpanjang %>% ggplot(aes(x = tanggal, y = ABJ)) +
+  geom_line(linewidth = 2, color = "lightblue",alpha=0.7) +
+  geom_point(colour = "navy", size = 2) + 
+  geom_rect(data = data.frame(xmin = as.Date("2021-05-01"),xmax = max(abjpanjang$tanggal, na.rm = TRUE),
+    ymin = -Inf,ymax = Inf),
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+  fill = "pink",alpha = 0.2,inherit.aes = FALSE) +
+    annotate("text",
+           x = as.Date("2021-06-01"),
+           y = max(abjpanjang %>%
+             summarise(max_val = max(ABJ, na.rm = TRUE)) %>% pull(max_val)),
+           label = "Mulai Intervensi Wolbachia",
+           hjust = 0,
+           vjust = 1.5,
+           size = 3,
+           color = "red") +
+  geom_vline(xintercept = as.Date("2021-05-01"),
+             linetype = "dashed",
+             color = "red",
+             linewidth = 0.8) +
+      annotate("text",
+           x = min(abjpanjang %>% summarise(min_val = min(tanggal, na.rm = TRUE))
+                   %>% pull(min_val)),
+           y = 95.5,
+           label = "Target Capaian ABJ 95%",
+           hjust = 0,
+           vjust = 1.5,
+           size = 3,
+           color = "darkgreen") +
+    geom_hline(yintercept = 95,
+             linetype = "dashed",
+             color = "darkgreen",
+             linewidth = 0.8) +
+    scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
+    geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.4,alpha = 0.2) +
+  labs(title = "Tren Bulanan rerata ABJ di Kab. Sleman Tahun 2016-2025",
+           subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
+    x = "Waktu",y = "Angka Bebas Jentik (%)") +
+    theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    panel.spacing = unit(0.8, "lines")
+  ); gabj
+```
+
+## Trend Prediktor: Covid-19
+
+Adapun trend kasus covid-19 di Kab. Sleman adalah sebagai berikut:
+
+```{r}
+#| out-width: 100%
+
+datcovid <- df %>%
+  group_by(tanggal) %>%
+  summarise(covid = sum(covid, na.rm = TRUE))
+
+gco <- datcovid %>% ggplot(aes(x = tanggal, y = covid)) +
+  geom_line(linewidth = 2, color = "lightblue",alpha=0.7) +
+  geom_point(colour = "navy", size = 2) + 
+  geom_rect(data = data.frame(xmin = as.Date("2021-05-01"),xmax = max(abjpanjang$tanggal, na.rm = TRUE),
+    ymin = -Inf,ymax = Inf),
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+  fill = "pink",alpha = 0.2,inherit.aes = FALSE) +
+    annotate("text",
+           x = as.Date("2021-06-01"),
+           y = max(datcovid %>%
+             summarise(max_val = max(covid, na.rm = TRUE)) %>% pull(max_val)),
+           label = "Mulai Intervensi Wolbachia",
+           hjust = 0,
+           vjust = 1.5,
+           size = 3,
+           color = "red") +
+  geom_vline(xintercept = as.Date("2021-05-01"),
+             linetype = "dashed",
+             color = "red",
+             linewidth = 0.8) +
+    scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
+    geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.4,alpha = 0.2) +
+  labs(title = "Tren Bulanan kasus Covid-19 di Kab. Sleman Tahun 2016-2025",
+           subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
+    x = "Waktu",y = "jumlah kasus") +
+    theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    panel.spacing = unit(0.8, "lines")
+  ); gco
 ```
 
 # Spatial
