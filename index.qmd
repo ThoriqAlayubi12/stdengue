@@ -1112,6 +1112,16 @@ gco <- datcovid %>% ggplot(aes(x = tanggal, y = covid)) +
   ); gco
 ```
 
+## Kepadatan Penduduk
+
+| Area       | Luas Wilayah (km2) | Total Populasi | Kepadatan Penduduk/km2 |
+|------------|--------------------|----------------|------------------------|
+| Kontrol    | 324                | 389145         | 1200                   |
+| Intervensi | 251                | 729208         | 2895                   |
+| Total      | 575                | 1118353        | 1942                   |
+
+: Komparasi Kepadatan Penduduk
+
 # Spatial
 
 coming soon, doain lancar dan MPH di Juli ini ges
