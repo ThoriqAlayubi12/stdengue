@@ -28,6 +28,7 @@ editor_options:
 inspeksi dataset terlebih dahulu. Summary data sebagai berikut
 
 ```{r}
+# untuk temporal
 library(readxl)
 library(dplyr)
 library(ggplot2)
@@ -37,19 +38,34 @@ library(tidyr)
 library(quarto)
 library(scales)
 
+#untuk spatial
+library(sf)
+library(spdep)
+library(classInt)
+library(RColorBrewer)
+library(patchwork)
+library(ggspatial)
+library(ggrepel)
+library(shadowtext)
+library(knitr)
+library(gt)
+library(purrr)
+library(broom)
+
+```
+
+```{r}
+## str(df)
+
 df <- read_excel("dataset utama analitik tesis.xlsx", 
     sheet = "temporal", col_types = c("numeric", 
         "text", "text", "text", "numeric", 
         "date", "numeric", "numeric", "numeric", 
         "numeric", "numeric", "numeric", 
         "numeric", "numeric", "numeric", 
-        "numeric", "numeric"))
+        "numeric", "numeric","numeric","numeric","numeric"))
 
-```
-
-```{r}
-## str(df)
-summary(df)
+##summary(df)
 ```
 
 ## Tren Dengue di Kab. Sleman
@@ -154,33 +170,40 @@ grafik2 <- ggplot(panjangin, aes(x = tanggal, y = Jumlah, color = Jenis)) +
     nrow = 3,
     labeller = labeller(
       Jenis = c(
-        "IR_DBD" = "Demam Berdarah Dengue",
-        "IR_DD" = "Dengue Dengue",
+        "IR_DBD" = "Demam Berdarah Dengue (DBD)",
+        "IR_DD" = "Demam Dengue (DD)",
         "IR_Dengue" = "Infeksi Dengue"))) +
   scale_color_manual(
     values = c(
       "IR_DBD" = "orange",
       "IR_DD" = "darkblue",
-      "IR_Dengue" = "maroon"
+      "IR_Dengue" = "darkred"
     )) +
+        scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
   labs(
-    title = "Tren Bulanan IR Dengue di Kab. Sleman Tahun 2016–2025",
-    subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
-    caption = "Garis merah menunjukkan awal intervensi Wolbachia di Kab. Sleman (Mei 2021)",
+    title = "Tren Bulanan IR Infeksi Dengue di Kab. Sleman Tahun 2016–2025",
+    subtitle = "Berdasarkan Level Diagnosa (DBD, DD) dan Infeksi Dengue Keseluruhan",
+    caption = "Catatan: Area berwarna menunjukkan periode intervensi Wolbachia di Kab. Sleman (Mei 2021)",
     x = "Waktu",
     y = "Incidence Rate per 100.000 Penduduk"
   ) +
-  theme_bw(base_size = 11) +
+  theme_bw(base_size = 12) +
   theme(
     panel.grid = element_blank(),
     axis.text.x = element_text(angle = 45, hjust = 1),
     strip.text = element_text(face = "bold"),
     panel.spacing = unit(0.8, "lines"),
     legend.position = "none",
+    plot.caption = element_text(hjust = 0,size = 9),
     plot.title = element_text(face = "bold"),
     plot.subtitle = element_text(size = 10))
 
 ggplotly(grafik2)
+
+#ggsave("trend IR Dengue.png",plot = grafik2,width = 12,height = 9,dpi = 600)
 
 ```
 
@@ -364,7 +387,7 @@ panjang2 <- total2 %>%
   ) %>%
   mutate(
     Kategori = recode(Kategori,
-                      "0" = "Bukan Intervensi",
+                      "0" = "Non-intervensi",
                       "1" = "Intervensi")
   )
 
@@ -373,45 +396,33 @@ grafik3 <- ggplot(panjang2, aes(x = tanggal, y = Jumlah, color = Kategori)) +
   geom_rect(
     data = rect_data,
     aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-    inherit.aes = FALSE,
-    fill = "#ffb6c1",
-    alpha = 0.25
-  ) +
+    inherit.aes = FALSE,fill = "#ffb6c1",
+    alpha = 0.25) +
   geom_line(linewidth = 1.1) +
   geom_point(size = 1.8) +
   geom_vline(
     xintercept = as.Date("2021-05-01"),
-    linetype = "dashed",
-    color = "red",
-    linewidth = 0.8
-  ) +
-  facet_wrap(
-    ~ Jenis,
-    scales = "free_y",
-    nrow = 3,
+    linetype = "dashed",color = "red",linewidth = 0.8) +
+  scale_x_date(date_breaks = "1 year",date_labels = "%Y",
+    expand = c(0, 0)) +
+  facet_wrap(~ Jenis,scales = "free_y",nrow = 3,
     labeller = labeller(
       Jenis = c(
         "IR_DBD" = "Demam Berdarah Dengue",
-        "IR_DD" = "Dengue Dengue",
-        "IR_Dengue" = "Infeksi Dengue"
-      )
-    )
-  ) +
+        "IR_DD" = "Demam Dengue",
+        "IR_Dengue" = "Infeksi Dengue"))) +
   scale_color_manual(
-    values = c(
-      "Bukan Intervensi" = "#f4a261",
-      "Intervensi" = "#264653"
-    )
-  ) +
+    values = c("Non-intervensi" = "#f4a261",
+      "Intervensi" = "#264653")) +
   labs(
     title = "Tren Bulanan IR Dengue di Kab. Sleman (2016–2025)",
     subtitle = "Perbandingan wilayah intervensi Wolbachia vs non-intervensi",
-    caption = "Garis merah menunjukkan awal intervensi Wolbachia di Kab. Sleman (Mei 2021)",
+    caption = "Catatan: Area berwarna menunjukkan periode intervensi Wolbachia di Kab. Sleman (Mei 2021)",
     x = "Waktu",
     y = "Incidence Rate per 100.000 Penduduk",
     color = "Wilayah Wolbachia"
   ) +
-  theme_minimal(base_size = 12) +
+  theme_bw(base_size = 12) +
   theme(
     panel.grid.minor = element_blank(),
     panel.grid.major.x = element_blank(),
@@ -421,9 +432,12 @@ grafik3 <- ggplot(panjang2, aes(x = tanggal, y = Jumlah, color = Kategori)) +
     legend.title = element_text(face = "bold"),
     panel.spacing = unit(0.8, "lines"),
     plot.title = element_text(face = "bold"),
-    plot.subtitle = element_text(size = 11))
+    plot.subtitle = element_text(size = 11),
+    plot.caption = element_text(hjust = 0,size = 9))
 
 ggplotly(grafik3)
+
+#ggsave("trend IR Dengue komparatif.png",plot = grafik3,width = 12,height = 9,dpi = 600)
 
 ```
 
@@ -644,12 +658,22 @@ g6 <- panjang2 %>%
 
 dfhm <- df %>% filter(id_desa > 0) %>% mutate(
   Kategori = factor(Kategori,levels = c(0, 1),
-                    labels = c("Kontrol", "Intervensi")))
-ggplotly(dfhm %>%
+                    labels = c("Non-intervensi", "Intervensi")))
+
+top_desadbd <- dfhm %>%
+  group_by(desa) %>%
+  summarise(max_ir = max(`IR DBD`, na.rm = TRUE)) %>%
+  arrange(desc(max_ir)) %>%
+  slice_head(n = 20) %>%
+  pull(desa)
+
+#topdesadbd <- dfhm %>% group_by(desa) %>% summarise(mean_ir = mean(`IR DBD`, na.rm = TRUE)) %>% filter(mean_ir > 5) %>% pull(desa)
+
+hm1 <- dfhm %>%
   mutate(
     tanggal = as.Date(tanggal),
     kategori = factor(Kategori),  # pastikan faktor
-    desa = reorder(desa, `IR DBD`, mean)) %>%
+    desa = reorder(desa, `IR DBD`, mean)) %>% 
   ggplot(aes(x = tanggal, y = desa, fill = `IR DBD`,
              text = paste0(
                "Desa: ", desa,
@@ -662,10 +686,11 @@ ggplotly(dfhm %>%
                                 kategori = unique(dfhm$Kategori)),
              aes(xintercept = tanggal),inherit.aes = FALSE,
              color = "black",linewidth = 0.4,alpha = 0.3) +
-  geom_tile() + scale_fill_gradientn(
+  geom_tile() + geom_tile(data = dfhm %>% filter(desa %in% top_desadbd),aes(x = tanggal, y = desa), fill = NA, color = "black",linewidth = 0.05) + 
+  scale_fill_gradientn(
     colours = c("white", "#fcbba1", "#fb6a4a", "#cb181d", "#67000d"),
     name = "IR DBD",
-    labels = comma,
+    labels = comma,limits = c(0, 100),oob = scales::squish,
     na.value = "grey90") +
   scale_x_date(
     date_breaks = "1 year",
@@ -674,27 +699,37 @@ ggplotly(dfhm %>%
   facet_grid(
     rows = vars(Kategori),
     scales = "free_y",
-    switch = "y") +
+    switch = "x") +
+  geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"), as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.2,alpha = 0.2) +
   labs(
-    title = "Heatmap IR DBD per Desa (2016–2025)",
-    subtitle = "Distribusi temporal IR DBD berdasarkan kategori wilayah di Kab. Sleman",
-    x = "Waktu (Bulanan)",
+    title = "Heatmap Bulanan IR DBD per 100.000 Penduduk di Kab. Sleman (2016–2025)",
+    subtitle = "Berdasarkan desa dan wilayah Wolbachia",
+    x = "Waktu",
     y = "Wilayah Wolbachia–Desa",
-    caption = "Sumber: Data Surveilans Dengue Kab. Sleman") +
-  theme_minimal(base_size = 12) +
+    caption = "Sumber: Data Surveilans Dengue Kab. Sleman Tahun 2019-2025 \nmenampilkan label dan grid untuk 20 desa dengan histori IR tertinggi \nGradasi warna paling maksimal mewakili IR >= 100 kasus per 100.000 penduduk") +
+  scale_y_discrete(
+  labels = function(x) ifelse(x %in% top_desadbd, x, "")) +
+  theme_bw(base_size = 12) +
   theme(
     panel.grid = element_blank(),
     axis.text.x = element_text(size = 10),
-    axis.text.y = element_blank(),
+    axis.text.y = element_text(size = 8),
     axis.ticks.y = element_blank(),
     strip.placement = "outside",
     strip.text.y.left = element_text(angle = 90, face = "bold"),
-    strip.background = element_rect(fill = "palegreen", color = NA),
     panel.spacing.y = unit(1.5, "lines"),
     plot.title = element_text(face = "bold", size = 14),
     plot.subtitle = element_text(size = 12, color = "grey40"),
-    legend.position = "right"),
-  tooltip = "text")
+    plot.caption = element_text(hjust = 0,size = 9),
+    legend.position = "right")
+
+ggplotly(hm1)
+
+#ggsave("hm dbd desa.png",plot = hm1,width = 11,height = 12,dpi = 600)
+
 ```
 
 Top-10 Desa dengan IR DBD tertinggi
@@ -769,8 +804,20 @@ p <- ggplot(df_top, aes(x = bulan, y = IR_DBD, color = Kategori)) +
 ```{r}
 datadd <- dfhm %>% filter(tanggal >= as.Date("2019-01-01"))
 
-ddd<- datadd %>%
-  mutate(desa = reorder(desa, `IR DD`, mean)) %>%
+top_desadd <- datadd %>%
+  group_by(desa) %>%
+  summarise(max_ir = max(`IR DD`, na.rm = TRUE)) %>%
+  arrange(desc(max_ir)) %>%
+  slice_head(n = 20) %>%
+  pull(desa)
+
+#topdesadbd <- dfhm %>% group_by(desa) %>% summarise(mean_ir = mean(`IR DBD`, na.rm = TRUE)) %>% filter(mean_ir > 5) %>% pull(desa)
+
+hm2 <- datadd %>%
+  mutate(
+    tanggal = as.Date(tanggal),
+    kategori = factor(Kategori),  # pastikan faktor
+    desa = reorder(desa, `IR DD`, mean)) %>% 
   ggplot(aes(x = tanggal, y = desa, fill = `IR DD`,
              text = paste0(
                "Desa: ", desa,
@@ -782,11 +829,14 @@ ddd<- datadd %>%
                                               by = "1 year"),
                                 kategori = unique(datadd$Kategori)),
              aes(xintercept = tanggal),inherit.aes = FALSE,
-             color = "black",size = 0.4,alpha = 0.3) +
-  geom_tile() + scale_fill_gradientn(
+             color = "black",linewidth = 0.4,alpha = 0.3) +
+  geom_tile() + geom_tile(data = datadd %>% filter(desa %in% top_desadd),aes(x = tanggal, y = desa), fill = NA, color = "black",linewidth = 0.05) + 
+  scale_fill_gradientn(
     colours = c("white", "#fcbba1", "#fb6a4a", "#cb181d", "#67000d"),
     name = "IR DD",
     labels = comma,
+        limits = c(0, 100),
+  oob = scales::squish,
     na.value = "grey90") +
   scale_x_date(
     date_breaks = "1 year",
@@ -795,28 +845,36 @@ ddd<- datadd %>%
   facet_grid(
     rows = vars(Kategori),
     scales = "free_y",
-    switch = "y") +
+    switch = "x") +
+  geom_vline(data = expand.grid(tanggal = seq(as.Date("2019-01-01"), as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.2,alpha = 0.2) +
   labs(
-    title = "Heatmap IR DD per Desa (2019–2025)",
-    subtitle = "Distribusi temporal IR DD berdasarkan kategori wilayah di Kab. Sleman",
-    x = "Waktu (Bulanan)",
+    title = "Heatmap Bulanan IR DD per 100.000 Penduduk di Kab. Sleman (2019–2025)",
+    subtitle = "Berdasarkan desa dan wilayah Wolbachia",
+    x = "Waktu",
     y = "Wilayah Wolbachia–Desa",
-    caption = "Sumber: Data Surveilans Dengue Kab. Sleman") +
-  theme_minimal(base_size = 12) +
+    caption = "Sumber: Data Surveilans Dengue Kab. Sleman Tahun 2019-2025 \nmenampilkan label dan grid untuk 20 desa dengan histori IR tertinggi \nGradasi warna paling maksimal mewakili IR >= 100 kasus per 100.000 penduduk") +
+  scale_y_discrete(
+  labels = function(x) ifelse(x %in% top_desadd, x, "")) +
+  theme_bw(base_size = 12) +
   theme(
     panel.grid = element_blank(),
     axis.text.x = element_text(size = 10),
-    axis.text.y = element_blank(),
+    axis.text.y = element_text(size = 8),
     axis.ticks.y = element_blank(),
     strip.placement = "outside",
     strip.text.y.left = element_text(angle = 90, face = "bold"),
-    strip.background = element_rect(fill = "palegreen", color = NA),
     panel.spacing.y = unit(1.5, "lines"),
     plot.title = element_text(face = "bold", size = 14),
     plot.subtitle = element_text(size = 12, color = "grey40"),
+    plot.caption = element_text(hjust = 0,size = 9),
     legend.position = "right")
 
-ggplotly(ddd,tooltip = "text")
+ggplotly(hm2)
+
+#ggsave("hm dd desa.png",plot = hm2,width = 11,height = 12,dpi = 600)
   
 ```
 
@@ -874,28 +932,39 @@ p1 <- ggplot(df_top1, aes(x = bulan, y = IR_DD, color = Kategori)) +
 ### Infeksi Dengue
 
 ```{r}
+top_desadengue <- datadd %>%
+  group_by(desa) %>%
+  summarise(max_ir = max(`IR dengue`, na.rm = TRUE)) %>%
+  arrange(desc(max_ir)) %>%
+  slice_head(n = 20) %>%
+  pull(desa)
 
-ggplotly(dfhm %>%
+#topdesadbd <- dfhm %>% group_by(desa) %>% summarise(mean_ir = mean(`IR DBD`, na.rm = TRUE)) %>% filter(mean_ir > 5) %>% pull(desa)
+
+hm3 <- datadd %>%
   mutate(
     tanggal = as.Date(tanggal),
     kategori = factor(Kategori),  # pastikan faktor
-    desa = reorder(desa, `IR dengue`, mean)) %>%
+    desa = reorder(desa, `IR dengue`, mean)) %>% 
   ggplot(aes(x = tanggal, y = desa, fill = `IR dengue`,
              text = paste0(
                "Desa: ", desa,
                "<br>Kategori: ", Kategori,
                "<br>Tanggal: ", format(tanggal, "%Y-%m"),
                "<br>IR Dengue: ", round(`IR dengue`, 2)))) +
-  geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"),
+  geom_vline(data = expand.grid(tanggal = seq(as.Date("2019-01-01"),
                                               as.Date("2025-12-01"),
                                               by = "1 year"),
-                                kategori = unique(dfhm$Kategori)),
+                                kategori = unique(datadd$Kategori)),
              aes(xintercept = tanggal),inherit.aes = FALSE,
-             color = "black",size = 0.4,alpha = 0.3) +
-  geom_tile() + scale_fill_gradientn(
+             color = "black",linewidth = 0.4,alpha = 0.3) +
+  geom_tile() + geom_tile(data = datadd %>% filter(desa %in% top_desadengue),aes(x = tanggal, y = desa), fill = NA, color = "black",linewidth = 0.05) + 
+  scale_fill_gradientn(
     colours = c("white", "#fcbba1", "#fb6a4a", "#cb181d", "#67000d"),
-    name = "IR Dengue",
+    name = "IR Infeksi Dengue",
     labels = comma,
+    limits = c(0, 100),
+  oob = scales::squish,
     na.value = "grey90") +
   scale_x_date(
     date_breaks = "1 year",
@@ -904,27 +973,36 @@ ggplotly(dfhm %>%
   facet_grid(
     rows = vars(Kategori),
     scales = "free_y",
-    switch = "y") +
+    switch = "x") +
+  geom_vline(data = expand.grid(tanggal = seq(as.Date("2019-01-01"), as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.2,alpha = 0.2) +
   labs(
-    title = "Heatmap IR Infeksi Dengue per Desa (2016–2025)",
-    subtitle = "Distribusi temporal IR Infeksi Dengue berdasarkan kategori wilayah di Kab. Sleman",
-    x = "Waktu (Bulanan)",
+    title = "Heatmap Bulanan IR Infeksi Dengue per 100.000 Penduduk di Kab. Sleman (2019–2025)",
+    subtitle = "Berdasarkan desa dan wilayah Wolbachia",
+    x = "Waktu",
     y = "Wilayah Wolbachia–Desa",
-    caption = "Sumber: Data Surveilans Dengue Kab. Sleman") +
-  theme_minimal(base_size = 12) +
+    caption = "Sumber: Data Surveilans Dengue Kab. Sleman Tahun 2019-2025 \nmenampilkan label dan grid untuk 20 desa dengan histori IR tertinggi \nGradasi warna paling maksimal mewakili IR >= 100 kasus per 100.000 penduduk") +
+  scale_y_discrete(
+  labels = function(x) ifelse(x %in% top_desadd, x, "")) +
+  theme_bw(base_size = 12) +
   theme(
     panel.grid = element_blank(),
     axis.text.x = element_text(size = 10),
-    axis.text.y = element_blank(),
+    axis.text.y = element_text(size = 8),
     axis.ticks.y = element_blank(),
     strip.placement = "outside",
     strip.text.y.left = element_text(angle = 90, face = "bold"),
-    strip.background = element_rect(fill = "palegreen", color = NA),
     panel.spacing.y = unit(1.5, "lines"),
     plot.title = element_text(face = "bold", size = 14),
     plot.subtitle = element_text(size = 12, color = "grey40"),
-    legend.position = "right"),
-  tooltip = "text")
+    plot.caption = element_text(hjust = 0,size = 9),
+    legend.position = "right")
+
+ggplotly(hm3)
+
+#ggsave("hm dengue desa.png",plot = hm3,width = 11,height = 12,dpi = 600)
 ```
 
 Top-10 Desa dengan IR Dengue tertinggi
@@ -994,7 +1072,8 @@ Adapun trend Angka Bebas Jentik (ABJ) secara Kabupaten adalah sebagai berikut:
 ```{r}
 #| out-width: 100%
 
-abjpanjang <- df %>%
+abjpanjang <- df %>% filter(tanggal >= as.Date("2019-01-01")) %>%
+  filter(Kategori != "dihapus") %>%
   group_by(tanggal) %>%
   summarise(ABJ = mean(ABJ, na.rm = TRUE))
 
@@ -1021,7 +1100,7 @@ gabj <- abjpanjang %>% ggplot(aes(x = tanggal, y = ABJ)) +
       annotate("text",
            x = min(abjpanjang %>% summarise(min_val = min(tanggal, na.rm = TRUE))
                    %>% pull(min_val)),
-           y = 95.5,
+           y = 95.2,
            label = "Target Capaian ABJ 95%",
            hjust = 0,
            vjust = 1.5,
@@ -1035,12 +1114,12 @@ gabj <- abjpanjang %>% ggplot(aes(x = tanggal, y = ABJ)) +
     date_breaks = "1 year",
     date_labels = "%Y",
     expand = c(0, 0)) +
-    geom_vline(data = expand.grid(tanggal = seq(as.Date("2016-01-01"),
+    geom_vline(data = expand.grid(tanggal = seq(as.Date("2019-01-01"),
                                               as.Date("2025-12-01"),
                                               by = "1 year")),
              aes(xintercept = tanggal),inherit.aes = FALSE,
              color = "black",linewidth = 0.4,alpha = 0.2) +
-  labs(title = "Tren Bulanan rerata ABJ di Kab. Sleman Tahun 2016-2025",
+  labs(title = "Tren Bulanan rerata ABJ di Kab. Sleman Tahun 2019-2025",
            subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
     x = "Waktu",y = "Angka Bebas Jentik (%)") +
     theme_minimal(base_size = 12) +
@@ -1054,6 +1133,187 @@ gabj <- abjpanjang %>% ggplot(aes(x = tanggal, y = ABJ)) +
     plot.subtitle = element_text(size = 11),
     panel.spacing = unit(0.8, "lines")
   ); gabj
+
+#ggsave("abj.png",plot = gabj,width = 12,height = 6,dpi = 600)
+```
+
+Adapun berdasarkan wilayah intervensi adalah sebagai berikut:
+
+```{r}
+#| out-width: 100%
+
+abjpanjang2 <- df %>% filter(tanggal >= as.Date("2019-01-01")) %>%
+  filter(Kategori != "dihapus") %>%
+  summarise(ABJ = mean(ABJ, na.rm = TRUE),.by = c(tanggal, Kategori)) %>%
+  mutate(Kategori = recode(Kategori,
+                      "0" = "Non-intervensi",
+                      "1" = "Intervensi"))
+
+gabj2 <- abjpanjang2 %>% ggplot(aes(x = tanggal, y = ABJ, color = Kategori)) +
+  geom_rect(data = data.frame(xmin = as.Date("2021-05-01"),
+                              xmax = max(abjpanjang$tanggal, na.rm = TRUE),
+                              ymin = -Inf,ymax = Inf),
+            aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = "pink",alpha = 0.2,inherit.aes = FALSE) +
+  annotate("text", x = as.Date("2021-06-01"),
+           y = max(86),
+           label = "Mulai Intervensi Wolbachia",
+           hjust = 0, vjust = 1.5,size = 3,
+           color = "red") +
+  geom_vline(xintercept = as.Date("2021-05-01"),
+             linetype = "dashed",color = "red",linewidth = 0.8) +
+      annotate("text",
+           x = min(abjpanjang %>%
+                     summarise(min_val = min(tanggal, na.rm = TRUE)) %>%
+                     pull(min_val)),
+           y = 95.7, label = "Target Capaian ABJ 95%",
+           hjust = 0, vjust = 1.5, size = 3,
+           color = "darkgreen") +
+    geom_hline(yintercept = 95, linetype = "dashed", color = "darkgreen",
+             linewidth = 0.8) +
+    scale_x_date( date_breaks = "1 year", date_labels = "%Y",
+                  expand = c(0, 0)) +
+    scale_color_manual( values = c( "Non-intervensi" = "#f4a261",
+                                    "Intervensi" = "#264653")) +
+    geom_vline(data = expand.grid(tanggal = seq(as.Date("2019-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.4,alpha = 0.2) +
+    geom_line(linewidth = 1.5,alpha=0.7) +
+  geom_point(size = 2) + 
+  labs(title = "Tren Bulanan rerata ABJ di Kab. Sleman Tahun 2019-2025",
+           subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
+    x = "Waktu",y = "Angka Bebas Jentik (%)") +
+    theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    panel.spacing = unit(0.8, "lines")
+  ); gabj2
+
+#ggsave("abj komparatif.png",plot = gabj2,width = 12,height = 7,dpi = 600)
+```
+
+## Trend Prediktor: Kegiatan Fogging
+
+```{r}
+#| out-width: 100%
+
+datafog <- df %>%
+  filter(Kategori != "dihapus") %>%
+  group_by(tanggal) %>%
+  summarise(fogging = sum(fogging, na.rm = TRUE))
+
+grafog <- datafog %>% ggplot(aes(x = tanggal, y = fogging)) +
+  geom_line(linewidth = 2, color = "lightblue",alpha=0.7) +
+  geom_point(colour = "navy", size = 2) + 
+  geom_rect(data = data.frame(xmin = as.Date("2021-05-01"),
+                              xmax = max(datafog$tanggal, na.rm = TRUE),
+    ymin = -Inf,ymax = Inf),
+  aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+  fill = "pink",alpha = 0.2,inherit.aes = FALSE) +
+    annotate("text",
+           x = as.Date("2021-06-01"),
+           y = max(datafog %>%
+             summarise(max_val = max(fogging, na.rm = TRUE)) %>% pull(max_val)),
+           label = "Mulai Intervensi Wolbachia",
+           hjust = 0,
+           vjust = 1.5,
+           size = 3,
+           color = "red") +
+  geom_vline(xintercept = as.Date("2021-05-01"),
+             linetype = "dashed",
+             color = "red",
+             linewidth = 0.8) +
+    scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0, 0)) +
+    geom_vline(data = expand.grid(tanggal = seq(as.Date("2019-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.4,alpha = 0.2) +
+  labs(title = "Tren Bulanan Kegiatan Fogging di Kab. Sleman Tahun 2016-2025",
+           subtitle = "Area berwarna menunjukkan periode intervensi Wolbachia",
+    x = "Waktu",y = "Jumlah kegiatan Fogging") +
+    theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    plot.caption = element_text(hjust = 0,size = 9),
+    panel.spacing = unit(0.8, "lines")
+  ); grafog
+
+#ggsave("fogging.png",plot = grafog,width = 12,height = 6,dpi = 600)
+```
+
+```{r}
+#| out-width: 100%
+
+dfogging <- df %>%
+  filter(Kategori != "dihapus") %>%
+  summarise(fogging = sum(fogging, na.rm = TRUE),.by = c(tanggal, Kategori)) %>%
+  mutate(Kategori = recode(Kategori,
+                      "0" = "Non-intervensi",
+                      "1" = "Intervensi"))
+
+
+gfog <- dfogging %>% ggplot(aes(x = tanggal, y = fogging, color = Kategori)) +
+  geom_rect(data = data.frame(xmin = as.Date("2021-05-01"),
+                              xmax = max(dfogging$tanggal, na.rm = TRUE),
+                              ymin = -Inf,ymax = Inf),
+            aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = "pink",alpha = 0.2,inherit.aes = FALSE) +
+  annotate("text", x = as.Date("2021-06-01"),
+           y = max(86),
+           label = "Mulai Intervensi Wolbachia",
+           hjust = 0, vjust = 1.5,size = 3,
+           color = "red") +
+  geom_vline(xintercept = as.Date("2021-05-01"),
+             linetype = "dashed",color = "red",linewidth = 0.8) +
+    scale_x_date( date_breaks = "1 year", date_labels = "%Y",
+                  expand = c(0, 0)) +
+    scale_color_manual( values = c( "Non-intervensi" = "#f4a261",
+                                    "Intervensi" = "#264653")) +
+    geom_vline(data = expand.grid(tanggal = seq(as.Date("2019-01-01"),
+                                              as.Date("2025-12-01"),
+                                              by = "1 year")),
+             aes(xintercept = tanggal),inherit.aes = FALSE,
+             color = "black",linewidth = 0.4,alpha = 0.2) +
+    geom_line(linewidth = 1.5,alpha=0.7) +
+  geom_point(size = 2) + 
+  labs(title = "Tren Bulanan Kegiatan Fogging di Kab. Sleman Tahun 2016-2025",
+       subtitle = "Berdasarkan wilayah intervensi dan non intervensi",
+           caption = "Area berwarna menunjukkan periode intervensi Wolbachia",
+    x = "Waktu",y = "Jumlah kegiatan Fogging") +
+    theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    
+    panel.spacing = unit(0.8, "lines")
+  )
+
+gfog
+
+#ggsave("fogging komparatif.png",plot = gfog,width = 12,height = 7,dpi = 600)
 ```
 
 ## Trend Prediktor: Covid-19
@@ -1114,14 +1374,931 @@ gco <- datcovid %>% ggplot(aes(x = tanggal, y = covid)) +
 
 ## Kepadatan Penduduk
 
-| Area       | Luas Wilayah (km2) | Total Populasi | Kepadatan Penduduk/km2 |
-|------------|--------------------|----------------|------------------------|
-| Kontrol    | 324                | 389145         | 1200                   |
-| Intervensi | 251                | 729208         | 2895                   |
-| Total      | 575                | 1118353        | 1942                   |
+| Area | Luas Wilayah (km2) | Total Populasi | Kepadatan Penduduk/km2 | Penduduk usia \<16 tahun (%) |
+|-----------|-------------|------------|-------------|------------------------|
+| Kontrol | 324 | 389.145 | 1.200 | 20,46 |
+| Intervensi | 251 | 729.208 | 2.895 | 21,16 |
+| Total | 575 | 1.118.353 | 1.942 | 20,92 |
 
 : Komparasi Kepadatan Penduduk
 
 # Spatial
 
-coming soon, doain lancar dan MPH di Juli ini ges
+```{r}
+#library(sf)
+#library(dplyr)
+#library(spdep)
+#library(classInt)
+#library(RColorBrewer)
+#library(readxl)
+#library(ggplot2)
+#library(patchwork)
+#library(ggspatial)
+#library(ggrepel)
+#library(shadowtext)
+#library(knitr)
+
+shp <- st_read("data/Peta DEM Sleman Desa (UTM).shp")
+datspa <- read_excel("dataset utama analitik tesis.xlsx",sheet = "spatial")
+
+shp <- shp %>%
+  left_join(
+    datspa,
+    by = c("NAMOBJ" = "desa"))
+
+# queen contiguity
+nb <- poly2nb(shp)
+
+# spatial weight
+lw <- nb2listw(nb, style = "W")
+
+global_moran <- moran.test(
+  shp$`IR 2025`, lw)
+
+moran_i  <- global_moran$estimate[1]
+expected <- global_moran$estimate[2]
+variance <- global_moran$estimate[3]
+
+z_score  <- global_moran$statistic
+p_value  <- global_moran$p.value
+
+```
+
+Hasil analisis deskriptif disajikan sebagaimana berikut:
+
+```{r}
+spatabel <- datspa %>%
+  select(
+    `st_wolbachia (=1)`,
+    `% pemukiman`,
+    `kepadatan penduduk`,
+    `rumah diperiksa (%)`,
+    DSI,
+    ABJ,
+    ketinggian_mean,
+    score_kapasitas,
+    index_dukungan,
+    `IR 2025`
+  ) %>% rename( "ketinggian" = ketinggian_mean,
+                "Skor Kapasitas" = score_kapasitas,
+                "index dukungan" = index_dukungan)
+
+# membuat label variabel
+label_variabel <- c(
+  `st_wolbachia (=1)` = "Status Wolbachia",
+  `% pemukiman` = "Lahan Pemukiman (%)",
+  `kepadatan penduduk` = "Kepadatan Penduduk",
+  `rumah diperiksa (%)` = "Rumah Diperiksa (%)",
+  DSI = "DSI",
+  ABJ = "ABJ (%)",
+  ketinggian = "Rerata Ketinggian (mdpl)",
+  `Skor Kapasitas` = "Skor Kapasitas",
+  `index dukungan` = "Indeks Dukungan",
+  `IR 2025` = "IR Dengue 2025")
+
+tabel_numerik <- spatabel %>%
+  select(-`st_wolbachia (=1)`) %>%
+  summarise( across(everything(),list(
+        mean = ~mean(., na.rm = TRUE),
+        SD = ~sd(., na.rm = TRUE),
+        median = ~median(., na.rm = TRUE),
+        min = ~min(., na.rm = TRUE),
+        max = ~max(., na.rm = TRUE)))) %>%
+    pivot_longer(
+    cols = everything(),
+    names_to = c("Variabel", ".value"),
+    names_sep = "_") %>%
+  mutate(
+    Variabel = label_variabel[Variabel]
+  )
+
+
+# tabel numerik
+tabel_numerik %>%
+  gt() %>%
+  fmt_number(
+    columns = c(mean, SD, median, min, max),
+    decimals = 2
+  )
+
+#gtsave(data = tabel_numerik %>%gt(),
+  #filename = "hasil/tabel_numerik.docx")
+
+```
+
+adapun hasil uji beda dua mean disajikan dalam tabel berikut:
+
+```{r}
+#library(dplyr)
+#library(purrr)
+#ibrary(broom)
+#library(tidyr)
+#library(gt)
+
+
+hasil_uji <- map_dfr(
+  names(spatabel)[names(spatabel) != "st_wolbachia (=1)"],
+  function(var){
+    temp <- spatabel %>%
+      select(`st_wolbachia (=1)`, all_of(var)) %>%
+      drop_na()
+    
+    p_normal_0 <- shapiro.test(
+      temp[[var]][temp$`st_wolbachia (=1)` == 0]
+    )$p.value
+    
+    p_normal_1 <- shapiro.test(
+      temp[[var]][temp$`st_wolbachia (=1)` == 1]
+    )$p.value
+    
+    normal <- p_normal_0 > 0.05 & p_normal_1 > 0.05
+    
+    grup0 <- temp %>%
+      filter(`st_wolbachia (=1)` == 0)
+    
+    grup1 <- temp %>%
+      filter(`st_wolbachia (=1)` == 1)
+    
+    desc0 <- sprintf(
+      "%.2f (%.2f)",
+      mean(grup0[[var]], na.rm = TRUE),
+      sd(grup0[[var]], na.rm = TRUE)
+    )
+    
+    desc1 <- sprintf(
+      "%.2f (%.2f)",
+      mean(grup1[[var]], na.rm = TRUE),
+      sd(grup1[[var]], na.rm = TRUE)
+    )
+    
+    if(normal){
+      
+      test <- t.test(
+        as.formula(paste0("`", var, "` ~ `st_wolbachia (=1)`")),
+        data = temp
+      )
+      
+      metode <- "T Independen"
+      
+    } else {
+      
+      test <- wilcox.test(
+        as.formula(paste0("`", var, "` ~ `st_wolbachia (=1)`")),
+        data = temp
+      )
+      
+      metode <- "Mann Whitney"
+    }
+    
+    pval <- test$p.value
+    
+    kesimpulan <- ifelse(
+      pval < 0.05,
+      "Signifikan",
+      "Tidak signifikan"
+    )
+    
+    tibble(
+      Prediktor = label_variabel[var],
+      `Intervensi` = desc1,
+      `Non Intervensi` = desc0,
+      `p-value` = round(pval, 3),
+      Kesimpulan = kesimpulan,
+      Uji = metode
+    )
+  }
+)
+
+hasil_uji %>%
+  gt() %>%
+  # merge header
+  tab_spanner(
+    label = "Status Wolbachia, Mean (SD)",
+    columns = c(`Intervensi`, `Non Intervensi`)
+  ) %>%
+  
+  # format p-value
+  fmt_number(
+    columns = `p-value`,
+    decimals = 3
+  ) %>%
+  
+  # judul tabel
+  tab_header(
+    title = "Uji Beda Status Wolbachia"
+  )
+
+#gtsave(data = hasil_uji %>% gt() %>% tab_spanner(label = "Status Wolbachia, Mean (SD)",columns = c(`Intervensi`, `Non Intervensi`)) %>%fmt_number(columns = `p-value`,decimals = 3) %>%tab_header(title = "Uji Beda Status Wolbachia"),filename = "hasil/tabel uji T spatial.docx")
+
+```
+
+## Incidence Rate Dengue
+
+Hasil uji global moran's I disajikan sebagai berikut
+
+```{r}
+direction <- ifelse(
+  moran_i > 0,
+  "positif",
+  "negatif"
+)
+
+strength <- case_when(
+  abs(moran_i) < 0.10 ~ "sangat lemah",
+  abs(moran_i) < 0.30 ~ "lemah",
+  abs(moran_i) < 0.50 ~ "sedang",
+  abs(moran_i) < 0.70 ~ "kuat",
+  TRUE ~ "sangat kuat"
+)
+
+significance <- ifelse(
+  p_value < 0.05,
+  "signifikan",
+  "tidak signifikan"
+)
+
+interpretation <- paste0(
+  "Berdasarkan tabel, diketahui bahwa analisis Global Moran's I menunjukkan autokorelasi spatial yang ",
+  significance,
+  " ",
+  direction,
+  " dengan clustering tendency ",
+  strength,
+  " (Moran's I = ",
+  round(moran_i, 3),
+  "; z-score = ",
+  round(z_score, 3),
+  "; p-value = ",
+  signif(p_value, 3),
+  ")."
+)
+
+result_table <- data.frame(
+  Indicator = c(
+    "Moran's I",
+    "Expected Index",
+    "Variance",
+    "Z-score",
+    "P-value"
+  ),
+
+  Value = c(
+    sprintf("%.3f", moran_i),
+    sprintf("%.3f", expected),
+    sprintf("%.3f", variance),
+    sprintf("%.3f", z_score),
+    sprintf("%.3f", p_value)
+  )
+)
+
+kable(
+  result_table,
+  format = "markdown",
+  align = c("l", "c"),
+  caption = "Global Moran's I Analysis"
+)
+```
+
+
+```{r results='asis', echo=FALSE}
+cat(interpretation)
+```
+
+Adapun peta distribusi spatial ditunjukkan pada gambar dibawah ini.
+
+```{r}
+local_moran <- localmoran(shp$`IR 2025`, lw)
+shp$Ii      <- local_moran[,1]
+shp$Pvalue  <- local_moran[,5]
+
+mean_ir <- mean(shp$`IR 2025`, na.rm = TRUE)
+
+lag_ir <- lag.listw(lw, shp$`IR 2025`)
+
+shp <- shp %>%
+  mutate(
+    IR_std  = `IR 2025` - mean_ir,
+    Lag_std = lag_ir - mean(lag_ir, na.rm = TRUE),
+
+    moran_quad = case_when(
+      IR_std > 0 & Lag_std > 0 & Pvalue <= 0.05 ~ "High-High",
+      IR_std < 0 & Lag_std < 0 & Pvalue <= 0.05 ~ "Low-Low",
+      IR_std > 0 & Lag_std < 0 & Pvalue <= 0.05 ~ "High-Low",
+      IR_std < 0 & Lag_std > 0 & Pvalue <= 0.05 ~ "Low-High",
+      TRUE ~ "Not Significant"
+    )
+  )
+
+moran_pal <- c(
+  "High-High" = "red3",
+  "Low-Low" = "blue3",
+  "High-Low" = "orange",
+  "Low-High" = "skyblue",
+  "Not Significant" = "grey90"
+)
+
+shp$moran_quad <- factor(
+  shp$moran_quad,
+  levels = c(
+    "High-High",
+    "Low-Low",
+    "High-Low",
+    "Low-High",
+    "Not Significant"
+  )
+)
+
+hotspot <- shp %>%
+  filter(
+    moran_quad == "High-High" |
+    `IR 2025` >= quantile(`IR 2025`, 0.95, na.rm = TRUE)
+  )
+
+p1 <- ggplot() + geom_sf( data = shp, aes(fill = `IR 2025`), color = "grey60",
+                          linewidth = 0.2) +
+    shadowtext::geom_shadowtext(
+    data = hotspot,
+    aes(
+      x = st_coordinates(st_centroid(geometry))[,1],
+      y = st_coordinates(st_centroid(geometry))[,2],
+      label = NAMOBJ
+    ),
+    size = 2,
+    color = "black",
+    bg.color = "white",
+    bg.r = 0.1
+  ) +
+  scale_fill_distiller(
+    palette = "YlOrRd",
+    direction = 1,
+    name = "Incidence Rate") +
+  labs(title = "A. Incidence Rate") +
+  theme_void() +
+  theme(
+    plot.title = element_text(
+      size = 10,
+      face = "bold",
+      hjust = 0.2),
+    legend.position = "right",
+    legend.title = element_text(
+      size = 8,
+      face = "bold"),
+    legend.text = element_text(
+      size = 7),
+    legend.background = element_rect(
+      fill = alpha("white", 0.5),
+      color = "black",
+      linewidth = 0.1),
+    plot.background = element_rect(
+      fill = "white",
+      color = NA),
+      legend.margin = margin(
+    t = 4,
+    r = 4,
+    b = 4,
+    l = 4))
+
+p2 <- ggplot() + geom_sf( data = shp, aes(fill = moran_quad), color = "grey60",
+                          linewidth = 0.2) +
+    shadowtext::geom_shadowtext(
+    data = hotspot,
+    aes(
+      x = st_coordinates(st_centroid(geometry))[,1],
+      y = st_coordinates(st_centroid(geometry))[,2],
+      label = NAMOBJ
+    ),
+    size = 2,
+    color = "black",
+    bg.color = "white",
+    bg.r = 0.1
+  ) +
+  scale_fill_manual(
+    values = moran_pal,
+    name = "Cluster Analysis"
+  ) +
+    # north arrow
+  annotation_north_arrow(
+    location = "tl",
+    which_north = "true",
+    style = north_arrow_orienteering(
+      text_size = 7
+    ),
+    height = unit(0.7, "cm"),
+    width = unit(0.7, "cm")
+  ) +
+  # scale bar
+  annotation_scale(
+    location = "bl",
+    width_hint = 0.25,
+    text_cex = 0.6
+  ) +
+  labs(title = "B. Analisis Cluster") +
+  theme_void() +
+  theme(
+    plot.title = element_text(
+      size = 10,
+      face = "bold",
+      hjust = 0.2),
+    legend.position = "right",
+    legend.title = element_text(
+      size = 8,
+      face = "bold"),
+    legend.text = element_text(
+      size = 7),
+    legend.background = element_rect(
+      fill = alpha("white", 0.5),
+      color = "black",
+      linewidth = 0.1),
+    plot.background = element_rect(
+      fill = "white",
+      color = NA),
+    legend.margin = margin(
+    t = 4,
+    r = 4,
+    b = 4,
+    l = 4))
+
+final_plot <- p1 + p2 +
+  plot_layout(ncol = 2) +
+  plot_annotation(
+    title = "Distribusi Spatial dan Analisis Cluster Incidence Rate Dengue",
+    subtitle = "Kab. Sleman Tahun 2025",
+    theme = theme(
+      plot.title = element_text(
+        hjust = 0.5,
+        face = "bold",
+        size = 12
+      ),
+      plot.subtitle = element_text(
+        hjust = 0.5,size = 11
+      )
+    )
+  )
+
+final_plot
+#ggsave( filename = "figure IR_2025.tiff",plot = final_plot,width = 14,height = 7,dpi = 600,compression = "lzw",bg = "white")
+
+```
+
+## Dimensi Kapasitas
+
+```{r}
+
+# Kapasitas Kesehatan
+
+labkap <- shp %>% filter(score_kapasitas >= quantile(score_kapasitas, 0.75, na.rm = TRUE))
+
+p3 <- ggplot() + geom_sf( data = shp, aes(fill = score_kapasitas), color = "grey60",
+                          linewidth = 0.2) +
+    shadowtext::geom_shadowtext(
+    data = labkap,
+    aes(
+      x = st_coordinates(st_centroid(geometry))[,1],
+      y = st_coordinates(st_centroid(geometry))[,2],
+      label = NAMOBJ
+    ),
+    size = 2,
+    color = "black",
+    bg.color = "white",
+    bg.r = 0.1
+  ) +
+  scale_fill_distiller(
+  palette = "RdYlBu",
+  direction = 1,
+  limits = c(0, 100),
+  breaks = seq(0, 100, 20),
+  name = "Kapasitas Kesehatan") +
+  labs(title = "A. Kapasitas Kesehatan") +
+  theme_void() +
+  theme(
+    plot.title = element_text(
+      size = 10,
+      face = "bold",
+      hjust = 0.2),
+    legend.position = "right",
+    legend.title = element_text(
+      size = 8,
+      face = "bold"),
+    legend.text = element_text(
+      size = 7),
+    legend.background = element_rect(
+      fill = alpha("white", 0.5),
+      color = "black",
+      linewidth = 0.1),
+    plot.background = element_rect(
+      fill = "white",
+      color = NA),
+      legend.margin = margin(
+    t = 4,
+    r = 4,
+    b = 4,
+    l = 4))
+
+# dukungan pemerintah desa
+
+labduk <- shp %>% filter(index_dukungan >= quantile(index_dukungan, 0.75, na.rm = TRUE))
+
+p4 <- ggplot() + geom_sf( data = shp, aes(fill = index_dukungan), color = "grey60",linewidth = 0.2) +
+    shadowtext::geom_shadowtext(
+    data = labduk,
+    aes(
+      x = st_coordinates(st_centroid(geometry))[,1],
+      y = st_coordinates(st_centroid(geometry))[,2],
+      label = NAMOBJ
+    ),
+    size = 2,
+    color = "black",
+    bg.color = "white",
+    bg.r = 0.1
+  ) +
+  scale_fill_distiller(
+  palette = "RdYlBu",
+  direction = 1,
+  limits = c(0, 100),
+  breaks = seq(0, 100, 20),
+  name = "Dukungan Pemerintah Desa") +
+    # north arrow
+  annotation_north_arrow(
+    location = "tl",
+    which_north = "true",
+    style = north_arrow_orienteering(
+      text_size = 7
+    ),
+    height = unit(0.7, "cm"),
+    width = unit(0.7, "cm")
+  ) +
+  # scale bar
+  annotation_scale(
+    location = "bl",
+    width_hint = 0.25,
+    text_cex = 0.6
+  ) +
+  labs(title = "B. Dukungan Pemerintah Desa") +
+  theme_void() +
+  theme(
+    plot.title = element_text(
+      size = 10,
+      face = "bold",
+      hjust = 0.2),
+    legend.position = "right",
+    legend.title = element_text(
+      size = 8,
+      face = "bold"),
+    legend.text = element_text(
+      size = 7),
+    legend.background = element_rect(
+      fill = alpha("white", 0.5),
+      color = "black",
+      linewidth = 0.1),
+    plot.background = element_rect(
+      fill = "white",
+      color = NA),
+    legend.margin = margin(
+    t = 4,
+    r = 4,
+    b = 4,
+    l = 4))
+
+final_plot2 <- p3 + p4 +
+  plot_layout(ncol = 2) +
+  plot_annotation(
+    title = "Distribusi Dimensi Kapasitas Pengendalian Dengue",
+    subtitle = "Kab. Sleman Tahun 2025",
+    theme = theme(
+      plot.title = element_text(
+        hjust = 0.5,
+        face = "bold",
+        size = 12
+      ),
+      plot.subtitle = element_text(
+        hjust = 0.5,size = 11
+      )
+    )
+  )
+
+final_plot2
+#ggsave( filename = "hasil/figure kapasitas.tiff",plot = final_plot2,width = 14,height = 7,dpi = 600,compression = "lzw",bg = "white")
+
+```
+
+## Dimensi Kerentanan
+
+```{r}
+# wolbachia
+
+shp <- shp %>% mutate(
+  wolbachia = ifelse(`st_wolbachia (=1)` == 1, "Intervensi","Non-Intervensi")
+)
+
+p5 <- ggplot() + geom_sf( data = shp, aes(fill = wolbachia), color = "black",
+                          linewidth = 0.2) +
+  scale_fill_manual(
+    values =c(
+  "Intervensi" = "skyblue",
+  "Non-Intervensi" = "#fcbba1",
+  name = "Status Wolbachia")
+  ) +
+  labs(title = "A. Intervensi Wolbachia") +
+  theme_void() +
+  theme(
+    plot.title = element_text(
+      size = 10,
+      face = "bold",
+      hjust = 0.2),
+    legend.position = "right",
+    legend.title = element_text(
+      size = 8,
+      face = "bold"),
+    legend.text = element_text(
+      size = 7),
+    legend.background = element_rect(
+      fill = alpha("white", 0.5),
+      color = "black",
+      linewidth = 0.1),
+    plot.background = element_rect(
+      fill = "white",
+      color = NA),
+      legend.margin = margin(
+    t = 4,
+    r = 4,
+    b = 4,
+    l = 4))
+
+# ABJ
+
+lababj <- shp %>% filter(ABJ >= 98)
+
+p6 <- ggplot() + geom_sf( data = shp, aes(fill = ABJ), color = "grey60",linewidth = 0.2) +
+    shadowtext::geom_shadowtext(
+    data = lababj,
+    aes(
+      x = st_coordinates(st_centroid(geometry))[,1],
+      y = st_coordinates(st_centroid(geometry))[,2],
+      label = NAMOBJ
+    ),
+    size = 2,
+    color = "black",
+    bg.color = "white",
+    bg.r = 0.1
+  ) +
+  scale_fill_gradient2(
+  low = "firebrick",
+  high = "skyblue",
+  midpoint = 95,
+  limits = c(75, 100),
+  breaks = seq(75, 100, 5),
+  name = "Angka Bebas Jentik (%)"
+) +
+    # north arrow
+  annotation_north_arrow(
+    location = "tl",
+    which_north = "true",
+    style = north_arrow_orienteering(
+      text_size = 7
+    ),
+    height = unit(0.7, "cm"),
+    width = unit(0.7, "cm")
+  ) +
+  # scale bar
+  annotation_scale(
+    location = "bl",
+    width_hint = 0.25,
+    text_cex = 0.6
+  ) +
+  labs(title = "B. Angka Bebas Jentik") +
+  theme_void() +
+  theme(
+    plot.title = element_text(
+      size = 10,
+      face = "bold",
+      hjust = 0.2),
+    legend.position = "right",
+    legend.title = element_text(
+      size = 8,
+      face = "bold"),
+    legend.text = element_text(
+      size = 7),
+    legend.background = element_rect(
+      fill = alpha("white", 0.5),
+      color = "black",
+      linewidth = 0.1),
+    plot.background = element_rect(
+      fill = "white",
+      color = NA),
+    legend.margin = margin(
+    t = 4,
+    r = 4,
+    b = 4,
+    l = 4))
+
+# kepadatan penduduk
+
+p7 <- ggplot() + geom_sf( data = shp, aes(fill =`kepadatan penduduk`), color = "grey60",
+                          linewidth = 0.2) +
+  scale_fill_distiller(
+    palette = "RdYlBu",
+    direction = -1,
+    name = "Kepadatan Penduduk/km2") +
+  labs(title = "C. Kepadatan Penduduk") +
+  theme_void() +
+  theme(
+    plot.title = element_text(
+      size = 10,
+      face = "bold",
+      hjust = 0.2),
+    legend.position = "right",
+    legend.title = element_text(
+      size = 8,
+      face = "bold"),
+    legend.text = element_text(
+      size = 7),
+    legend.background = element_rect(
+      fill = alpha("white", 0.5),
+      color = "black",
+      linewidth = 0.1),
+    plot.background = element_rect(
+      fill = "white",
+      color = NA),
+      legend.margin = margin(
+    t = 4,
+    r = 4,
+    b = 4,
+    l = 4))
+
+# lausan lahan pemukiman
+
+p8 <- ggplot() + geom_sf( data = shp, aes(fill = `% pemukiman`), color = "grey60",
+                          linewidth = 0.2) +
+  scale_fill_distiller(
+    palette = "RdYlBu",
+    direction = -1,
+    name = "% Pemukiman") +
+      # north arrow
+  annotation_north_arrow(
+    location = "tl",
+    which_north = "true",
+    style = north_arrow_orienteering(
+      text_size = 7
+    ),
+    height = unit(0.7, "cm"),
+    width = unit(0.7, "cm")
+  ) +
+  # scale bar
+  annotation_scale(
+    location = "bl",
+    width_hint = 0.25,
+    text_cex = 0.6
+  ) +
+  labs(title = "D. Persentase Lahan Pemukiman") +
+  theme_void() +
+  theme(
+    plot.title = element_text(
+      size = 10,
+      face = "bold",
+      hjust = 0.2),
+    legend.position = "right",
+    legend.title = element_text(
+      size = 8,
+      face = "bold"),
+    legend.text = element_text(
+      size = 7),
+    legend.background = element_rect(
+      fill = alpha("white", 0.5),
+      color = "black",
+      linewidth = 0.1),
+    plot.background = element_rect(
+      fill = "white",
+      color = NA),
+    legend.margin = margin(
+    t = 4,
+    r = 4,
+    b = 4,
+    l = 4))
+
+# ketinggian
+p9 <- ggplot() + geom_sf( data = shp, aes(fill = X_mean), color = "grey60",
+                          linewidth = 0.2) +
+  scale_fill_distiller(
+    palette = "RdYlBu",
+    direction = 1,
+    name = "ketinggian (mdpl)") +
+  labs(title = "E. Rerata Ketinggian Desa") +
+  theme_void() +
+  theme(
+    plot.title = element_text(
+      size = 10,
+      face = "bold",
+      hjust = 0.2),
+    legend.position = "right",
+    legend.title = element_text(
+      size = 8,
+      face = "bold"),
+    legend.text = element_text(
+      size = 7),
+    legend.background = element_rect(
+      fill = alpha("white", 0.5),
+      color = "black",
+      linewidth = 0.1),
+    plot.background = element_rect(
+      fill = "white",
+      color = NA),
+    legend.margin = margin(
+    t = 4,
+    r = 4,
+    b = 4,
+    l = 4))
+
+kerentanan <- (p5 + p6 + p7 + p8 + p9) +
+  plot_layout(ncol = 2) +
+  plot_annotation(
+    title = "Distribusi Spatial Dimensi Kerentanan Dengue",
+    subtitle = "Kab. Sleman Tahun 2025",
+    theme = theme(
+      plot.title = element_text(
+        hjust = 0.5,
+        face = "bold",
+        size = 12
+      ),
+      plot.subtitle = element_text(
+        hjust = 0.5,size = 11
+      )
+    )
+  )
+
+kerentanan
+
+#ggsave( filename = "hasil/figure kerentanan.tiff",plot = kerentanan,width = 11, height = 12,dpi = 600,compression = "lzw",bg = "white")
+
+
+```
+
+## Dimensi Keparahan
+
+```{r}
+
+labdsi <- shp %>% filter(DSI >= quantile(DSI, 0.90, na.rm = TRUE))
+
+p10 <- ggplot() + geom_sf(data = shp, aes(fill = DSI), color = "grey60",linewidth = 0.2) +
+    shadowtext::geom_shadowtext(
+    data = labdsi,
+    aes(
+      x = st_coordinates(st_centroid(geometry))[,1],
+      y = st_coordinates(st_centroid(geometry))[,2],
+      label = NAMOBJ
+    ),
+    size = 3,
+    color = "black",
+    bg.color = "white",
+    bg.r = 0.1
+  ) +
+  scale_fill_distiller(
+  palette = "RdYlBu",
+  direction = -1,
+  limits = c(0, 15),
+  breaks = seq(0, 15, 3),
+  name = "Dengue severity Index") +
+    # north arrow
+  annotation_north_arrow(
+    location = "tl",
+    which_north = "true",
+    style = north_arrow_orienteering(
+      text_size = 7
+    ),
+    height = unit(0.7, "cm"),
+    width = unit(0.7, "cm")
+  ) +
+  # scale bar
+  annotation_scale(
+    location = "bl",
+    width_hint = 0.25,
+    text_cex = 0.6
+  ) +
+  labs(title = "Distribusi Spatial Dengue Severity Index Kab. Sleman Tahun 2025") +
+  theme_void() +
+  theme(
+    plot.title = element_text(
+      size = 14,
+      face = "bold",
+      hjust = 0.5),
+    legend.position = "right",
+    legend.title = element_text(
+      size = 10,
+      face = "bold"),
+    legend.text = element_text(
+      size = 9),
+    legend.background = element_rect(
+      fill = alpha("white", 0.5),
+      color = "black",
+      linewidth = 0.1),
+    plot.background = element_rect(
+      fill = "white",
+      color = NA),
+    legend.margin = margin(
+    t = 4,
+    r = 4,
+    b = 4,
+    l = 4))
+
+p10
+#ggsave( filename = "hasil/figure DSI.tiff",plot = p10,width = 12,height = 8,dpi = 600,compression = "lzw",bg = "white")
+```
